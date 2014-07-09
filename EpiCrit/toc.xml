@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Addon Author="ZiggyStardust" APIVersion="8" Name="EpiCrit" Description="Critical hit record">
+<Addon Author="HawtChocolate" APIVersion="8" Name="EpiCrit" Description="Critical hit record">
     <Script Name="EpiCrit.lua"/>
     <Form Name="EpiCrit.xml"/>
 </Addon>

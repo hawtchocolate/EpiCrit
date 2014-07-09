@@ -2,7 +2,7 @@
 -- EpiCrit - Critical hit tracking
 -- Author: This super awesome guy
 -- Curse: HawtChocolateDev
--- WildStar Forums: Mem
+-- WildStar Forums: HawtChocolate
 -- /ec slash command to restore
 -----------------------------------------------------------------------------------------------
  
@@ -24,13 +24,15 @@ local EpiCrit = {}
 -----------------------------------------------------------------------------------------------
 -- Globals
 -----------------------------------------------------------------------------------------------
-tAddonVersion = {"1","0","2"}
-strAddonVersion = tAddonVersion[1] .. "." .. tAddonVersion[2] .. "." .. tAddonVersion[3]
+tAddonVersion = {"1","0","3"}
+strAddonVersion = "v" .. tAddonVersion[1] .. "." .. tAddonVersion[2] .. "." .. tAddonVersion[3]
 currentPlayer = nil
 sPlayerName = nil
 tAbilities = nil
 tAppData = {
 	tUserPrefs = {
+		bStickyRecords = false,
+		bDisplayWindow = false,
 		nDefaultMode = 0,
 		bDisplayNotification = true,
 		bAutoTrackNewSkills = true,
@@ -83,7 +85,7 @@ function EpiCrit:OnCharCreated()
 currentPlayer = GameLib.GetPlayerUnit()
 sPlayerName = GameLib.GetPlayerUnit():GetName()
 	self.nCurrentMode = tAppData.tUserPrefs.nDefaultMode or 0
-	self:BuildItemList(self.nCurrentMode)
+	--self:BuildItemList(self.nCurrentMode)
 end
 -----------------------------------------------------------------------------------------------
 -- EpiCrit OnLoad
@@ -122,13 +124,15 @@ function EpiCrit:OnDocLoaded()
 		-- Do additional Addon initialization here
 		--tAbilities = AbilityBook.GetAbilitiesList()
 		--self:BuildItemList(self.nCurrentMode)
-		self.wndMain:Show(true, true)
+		self.wndMain:Show(tAppData.tUserPrefs.bDisplayWindow, true)
 	end
 end
 
 function EpiCrit:OnWindowManagementReady()
     Event_FireGenericEvent("WindowManagementAdd", {wnd = self.wndMain, strName = "EpiCrit"})
+	if tAppData.tUserPrefs.bDisplayWindow then
 		self:BuildItemList(self.nCurrentMode)
+	end
 
 end
 -----------------------------------------------------------------------------------------------
@@ -155,6 +159,14 @@ function EpiCrit:DisplayNotificationChecked( wndHandler, wndControl, eMouseButto
 	tAppData.tUserPrefs.bDisplayNotification = wndControl:IsChecked()
 end
 
+
+function EpiCrit:EnableStickyRecordsChecked( wndHandler, wndControl, eMouseButton )
+	tAppData.tUserPrefs.bStickyRecords = wndControl:IsChecked()
+end
+
+function EpiCrit:DisplayWindowChecked( wndHandler, wndControl, eMouseButton )
+	tAppData.tUserPrefs.bDisplayWindow = wndControl:IsChecked()
+end
 
 ---------------------------------------------------------------------------------------------------
 -- EpiCritListItem Functions
@@ -208,7 +220,7 @@ if(sCaster == sPlayerName) then
 
 local wndDetails = self.wndMain:FindChild("ExtInfoPopout")
 
-if (not tEventArgs.unitCaster:IsPvpFlagged() and wndDetails:IsVisible()) then
+if (not tEventArgs.unitCaster:IsPvpFlagged() and not tAppData.tUserPrefs.bStickyRecords and wndDetails:IsVisible()) then
 	wndDetails:Show(false, true)
 end
 
@@ -549,6 +561,11 @@ function EpiCrit:ToggleConfigurationPanel( wndHandler, wndControl, eMouseButton 
 	local chkDisplayNotif = wndPrefs:FindChild("ChkDisplayNotif")
 	chkDisplayNotif:SetCheck(tAppData.tUserPrefs.bDisplayNotification)
 	
+	local chkWinDisplay = wndPrefs:FindChild("ChkWindowDisplay")
+	chkWinDisplay:SetCheck(tAppData.tUserPrefs.bDisplayWindow)
+	
+	local chkStickyRecords = wndPrefs:FindChild("ChkStickyRecords")
+	chkStickyRecords:SetCheck(tAppData.tUserPrefs.bStickyRecords)
 	
 	local strAddonInfoText = string.format("EpiCrit Version: %s", strAddonVersion)
 	local wndVersion = wndPrefs:FindChild("AddonInfo")
