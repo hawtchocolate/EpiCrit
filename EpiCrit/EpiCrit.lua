@@ -477,6 +477,9 @@ end
 
 function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	local extTitle = wndDetails:FindChild("Title")
+	
+	if(extTitle:GetText() == tData.sSpellName) then
+	
 	local wndNormStats = wndDetails:FindChild("NormalStats")
 	local wndCritStats = wndDetails:FindChild("CritStats")
 	
@@ -515,6 +518,10 @@ function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	local wndCritRecord = wndCritStats:FindChild("CritRecord")
 	local wndCritalRecordVal = wndCritRecord:FindChild("CritRecordVal")
 	wndCritalRecordVal:SetText(string.format("%s",tData.tCrit.nSpellDamage))
+	else
+	return
+	end
+	
 
 end
 --Button Handlers
