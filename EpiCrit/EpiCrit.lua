@@ -299,7 +299,7 @@ end
 			oEcDamage = tAppData.tDamageData[sSpellName]
 		end
 	else
-		bFirstRecord = tAppData.tDamageData[sSpellName] == nil
+		bFirstRecord = tAppData.tHealingData[sSpellName] == nil
 		if bFirstRecord then
 			tAppData.tHealingData[sSpellName] = tDamage
 			oEcDamage = tAppData.tHealingData[sSpellName]
