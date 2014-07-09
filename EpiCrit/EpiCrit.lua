@@ -147,9 +147,35 @@ end
 
 
 -----------------------------------------------------------------------------------------------
--- EpiCritForm Functions
+-- EpiCrit Defaults
 -----------------------------------------------------------------------------------------------
 
+-- Default Damage Data Structure
+tDefaultDamageData = {
+	sSpellName = "Unknown",
+	tNorm = {
+		nSpellDamage = 0,
+		sTargetName = "No Target",
+		nTargetLevel = 0,
+		nNumSuccess = 0,
+		sRecordTime = "",
+		sLastTargetName = "None",
+		nLastTargetLevel = 0,
+		nLastSpellDamage = 0,
+		sRecordZone = "No Zone"
+	},
+	tCrit = {
+		nSpellDamage = 0,
+		sTargetName = "No Target",
+		nTargetLevel = 0,
+		nNumSuccess = 0,
+		sRecordTime = "",
+		sLastTargetName = "None",
+		nLastTargetLevel = 0,
+		nLastSpellDamage = 0,
+		sRecordZone = "No Zone"
+	}
+}
 
 ---------------------------------------------------------------------------------------------------
 -- EpiCritHud Functions
@@ -234,36 +260,12 @@ local tSkills = tAppData.tUserPrefs.tExcludedSkills
 				end
 			end
 
-tDamage = {
-	sSpellName = "Unknown",
-	tNorm = {
-		nSpellDamage = 0,
-		sTargetName = "No Target",
-		nTargetLevel = 0,
-		nNumSuccess = 0,
-		sRecordTime = "",
-		sLastTargetName = "None",
-		nLastTargetLevel = 0,
-		nLastSpellDamage = 0,
-		sRecordZone = "No Zone"
-	},
-	tCrit = {
-		nSpellDamage = 0,
-		sTargetName = "No Target",
-		nTargetLevel = 0,
-		nNumSuccess = 0,
-		sRecordTime = "",
-		sLastTargetName = "None",
-		nLastTargetLevel = 0,
-		nLastSpellDamage = 0,
-		sRecordZone = "No Zone"
-	}
-}
+tDamage = tDefaultDamageData
 
 if bIsDamage then
 	nDamage = tEventArgs.nDamageAmount or 0
 else
-	nDamage= tEventArgs.nHealAmount or 0
+	nDamage = tEventArgs.nHealAmount or 0
 end
 
 local nTargetLevel = tEventArgs.unitTarget:GetLevel()
@@ -343,10 +345,14 @@ end
 	
 	if bFirstRecord then
 		if bIsCritical then
-			self:OnNewRecord(true, sSpellName, nDamage)
+			self:OnNewRecord(true, oEcDamage)
 		else
-			self:OnNewRecord(false, sSpellName, nDamage)
+			self:OnNewRecord(false, oEcDamage)
 		end
+	end
+	
+	if wndDetails:IsVisible() then
+		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails)
 	end
 	--if bRefresh then
 	self:BuildItemList(self.nCurrentMode)
@@ -358,7 +364,8 @@ end
 function EpiCrit:OnNewRecordDestroy()
 	self.wndNewRecord:Show(false, true)
 end
-function EpiCrit:OnNewRecord(bIsCritical, sSpellName, nDamage)
+
+function EpiCrit:OnNewRecord(bIsCritical,oEcDamage)
 	if not tAppData.tUserPrefs.bDisplayNotification then
 		return
 	end
@@ -367,9 +374,9 @@ function EpiCrit:OnNewRecord(bIsCritical, sSpellName, nDamage)
 	local recordText = nil
 	
 	if bIsCritical then
-		recordText = string.format("%s with %s critical damage", sSpellName, nDamage)
+		recordText = string.format("%s with %s critical damage", oEcDamage.sSpellName, oEcDamage.tCrit.nSpellDamage)
 	else
-		recordText = string.format("%s with %s normal damage", sSpellName, nDamage)
+		recordText = string.format("%s with %s normal damage", oEcDamage.sSpellName, oEcDamage.tNorm.nSpellDamage)
 	end
 	
 	wndRecordLabel:SetText(recordText)
@@ -466,34 +473,10 @@ function EpiCrit:OnRestore(eType, tSavedData)
   end
 end
 
---Button Handlers
-function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
-	local wndPrefs = self.wndMain:FindChild("SettingsPopout")
-	
-	if(wndPrefs:IsVisible()) then
-		wndPrefs:Show(false, true)
-	end
-	
-	local key = wndControl:GetContentType()
-	local tData = {}
-	
-	if(self.nCurrentMode == 0) then
-		tData = tAppData.tDamageData[key]
-	elseif(self.nCurrentMode == 1) then
-		tData = tAppData.tHealingData[key]
-	end
-	
-	local wndDetails = self.wndMain:FindChild("ExtInfoPopout")
+function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	local extTitle = wndDetails:FindChild("Title")
 	local wndNormStats = wndDetails:FindChild("NormalStats")
 	local wndCritStats = wndDetails:FindChild("CritStats")
-	
-	if(not wndDetails:IsVisible()) then
-		wndDetails:Show(true, true)
-		--wndDetails:ToFront()
-		elseif(extTitle:GetText() == key) then
-		wndDetails:Show(false, true)
-	end
 	
 	extTitle:SetText(tData.sSpellName)
 	
@@ -530,7 +513,36 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 	local wndCritRecord = wndCritStats:FindChild("CritRecord")
 	local wndCritalRecordVal = wndCritRecord:FindChild("CritRecordVal")
 	wndCritalRecordVal:SetText(string.format("%s",tData.tCrit.nSpellDamage))
+
+end
+--Button Handlers
+function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
+	local wndPrefs = self.wndMain:FindChild("SettingsPopout")
 	
+	if(wndPrefs:IsVisible()) then
+		wndPrefs:Show(false, true)
+	end
+	
+	local key = wndControl:GetContentType()
+	local tData = {}
+	
+	if(self.nCurrentMode == 0) then
+		tData = tAppData.tDamageData[key]
+	elseif(self.nCurrentMode == 1) then
+		tData = tAppData.tHealingData[key]
+	end
+	
+	local wndDetails = self.wndMain:FindChild("ExtInfoPopout")
+
+	self:BuildOrUpdateDetailsPanel(tData, wndDetails)
+	
+	if(not wndDetails:IsVisible()) then
+		wndDetails:Show(true, true)
+		--wndDetails:ToFront()
+		elseif(extTitle:GetText() == key) then
+		wndDetails:Show(false, true)
+	end
+		
 end
 function EpiCrit:ShowHealing( wndHandler, wndControl, eMouseButton )
 	self.nCurrentMode = 1
