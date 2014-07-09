@@ -477,8 +477,9 @@ end
 
 function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	local extTitle = wndDetails:FindChild("Title")
+	local titleText = extTitle:GetText()
 	
-	if(extTitle:GetText() == tData.sSpellName) then
+	if(titleText == tData.sSpellName or titleText == "Skill Name") then
 	
 	local wndNormStats = wndDetails:FindChild("NormalStats")
 	local wndCritStats = wndDetails:FindChild("CritStats")
