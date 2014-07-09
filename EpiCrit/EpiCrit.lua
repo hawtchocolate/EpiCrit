@@ -151,7 +151,8 @@ end
 -----------------------------------------------------------------------------------------------
 
 -- Default Damage Data Structure
-tDefaultDamageData = {
+function EpiCrit:GetDefaultDamageData()
+local = tDefaultDamageData = {
 	sSpellName = "Unknown",
 	tNorm = {
 		nSpellDamage = 0,
@@ -176,7 +177,8 @@ tDefaultDamageData = {
 		sRecordZone = "No Zone"
 	}
 }
-
+return tDefaultDamageData
+end
 ---------------------------------------------------------------------------------------------------
 -- EpiCritHud Functions
 ---------------------------------------------------------------------------------------------------
@@ -260,7 +262,7 @@ local tSkills = tAppData.tUserPrefs.tExcludedSkills
 				end
 			end
 
-tDamage = tDefaultDamageData
+tDamage = self:GetDefaultDamageData()
 
 if bIsDamage then
 	nDamage = tEventArgs.nDamageAmount or 0
