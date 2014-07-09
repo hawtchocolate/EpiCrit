@@ -535,6 +535,7 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 	end
 	
 	local wndDetails = self.wndMain:FindChild("ExtInfoPopout")
+	local extTitle = wndDetails:FindChild("Title")
 
 	self:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	
