@@ -354,7 +354,7 @@ end
 	end
 	
 	if wndDetails:IsVisible() then
-		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails)
+		--self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails)
 	end
 	--if bRefresh then
 	self:BuildItemList(self.nCurrentMode)
@@ -477,9 +477,6 @@ end
 
 function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	local extTitle = wndDetails:FindChild("Title")
-	local titleText = extTitle:GetText()
-	
-	if(titleText == tData.sSpellName or titleText == "Skill Name") then
 	
 	local wndNormStats = wndDetails:FindChild("NormalStats")
 	local wndCritStats = wndDetails:FindChild("CritStats")
@@ -519,9 +516,6 @@ function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	local wndCritRecord = wndCritStats:FindChild("CritRecord")
 	local wndCritalRecordVal = wndCritRecord:FindChild("CritRecordVal")
 	wndCritalRecordVal:SetText(string.format("%s",tData.tCrit.nSpellDamage))
-	else
-	return
-	end
 	
 
 end
