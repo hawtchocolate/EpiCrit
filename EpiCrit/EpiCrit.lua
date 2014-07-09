@@ -332,7 +332,7 @@ end
 		oEcDamage.tCrit.sTargetName = sTargetName
 		oEcDamage.tCrit.nTargetLevel = nTargetLevel
 		oEcDamage.tCrit.nNumSuccess = oEcDamage.tCrit.nNumSuccess + 1
-		self:OnNewRecord(true, sSpellName, nDamage)
+		self:OnNewRecord(true, oEcDamage)
 	elseif(nDamage > oEcDamage.tNorm.nSpellDamage) then
 		bRefresh = true
 		oEcDamage.tNorm.sRecordZone = GameLib.GetCurrentZoneMap().strName
@@ -341,7 +341,7 @@ end
 		oEcDamage.tNorm.sTargetName = sTargetName
 		oEcDamage.tNorm.nTargetLevel = nTargetLevel
 		oEcDamage.tNorm.nNumSuccess = oEcDamage.tNorm.nNumSuccess + 1
-		self:OnNewRecord(false, sSpellName, nDamage)
+		self:OnNewRecord(false, oEcDamage)
 
 	end
 	
