@@ -152,7 +152,7 @@ end
 
 -- Default Damage Data Structure
 function EpiCrit:GetDefaultDamageData()
-local = tDefaultDamageData = {
+local tDefaultDamageData = {
 	sSpellName = "Unknown",
 	tNorm = {
 		nSpellDamage = 0,
