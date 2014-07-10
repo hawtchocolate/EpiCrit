@@ -354,7 +354,7 @@ end
 	end
 	
 	if wndDetails:IsVisible() then
-		--self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails)
+		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails)
 	end
 	--if bRefresh then
 	self:BuildItemList(self.nCurrentMode)
@@ -544,7 +544,7 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 	if(not wndDetails:IsVisible()) then
 		wndDetails:Show(true, true)
 		--wndDetails:ToFront()
-		elseif(extTitle:GetText() == key) then
+	elseif(extTitle:GetText() == key) then
 		wndDetails:Show(false, true)
 	end
 		
