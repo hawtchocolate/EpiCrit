@@ -24,7 +24,7 @@ local EpiCrit = {}
 -----------------------------------------------------------------------------------------------
 -- Globals
 -----------------------------------------------------------------------------------------------
-tAddonVersion = {"1","0","3"}
+tAddonVersion = {"1","0","5"}
 strAddonVersion = "v" .. tAddonVersion[1] .. "." .. tAddonVersion[2] .. "." .. tAddonVersion[3]
 currentPlayer = nil
 sPlayerName = nil
