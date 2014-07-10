@@ -41,7 +41,7 @@ tAppData = {
 	tDamageData = {},
 	tHealingData = {}
 }
-bExpanded = true
+strCurrentDetails = nil
 -----------------------------------------------------------------------------------------------
 -- Initialization
 -----------------------------------------------------------------------------------------------
@@ -322,7 +322,7 @@ end
 		oEcDamage.tNorm.sLastTargetName = sTargetName
 		oEcDamage.tNorm.nLastTargetLevel = nTargetLevel
 	end
-	--local bRefresh = false
+	local bRefresh = false
 	--NEW RECORDS
 	if(nDamage > oEcDamage.tCrit.nSpellDamage and bIsCritical) then
 		bRefresh = true
@@ -353,8 +353,8 @@ end
 		end
 	end
 	
-	if wndDetails:IsVisible() then
-		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails)
+	if (wndDetails:IsVisible() and bRefresh) then
+		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails, false)
 	end
 	--if bRefresh then
 	self:BuildItemList(self.nCurrentMode)
@@ -475,8 +475,10 @@ function EpiCrit:OnRestore(eType, tSavedData)
   end
 end
 
-function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
+function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails, bReset)
 	local extTitle = wndDetails:FindChild("Title")
+	
+	if (extTitle:GetText() == tData.sSpellName or bReset) then
 	
 	local wndNormStats = wndDetails:FindChild("NormalStats")
 	local wndCritStats = wndDetails:FindChild("CritStats")
@@ -517,6 +519,7 @@ function EpiCrit:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	local wndCritalRecordVal = wndCritRecord:FindChild("CritRecordVal")
 	wndCritalRecordVal:SetText(string.format("%s",tData.tCrit.nSpellDamage))
 	
+	end
 
 end
 --Button Handlers
@@ -530,16 +533,8 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 	local key = wndControl:GetContentType()
 	local tData = {}
 	
-	if(self.nCurrentMode == 0) then
-		tData = tAppData.tDamageData[key]
-	elseif(self.nCurrentMode == 1) then
-		tData = tAppData.tHealingData[key]
-	end
-	
 	local wndDetails = self.wndMain:FindChild("ExtInfoPopout")
 	local extTitle = wndDetails:FindChild("Title")
-
-	self:BuildOrUpdateDetailsPanel(tData, wndDetails)
 	
 	if(not wndDetails:IsVisible()) then
 		wndDetails:Show(true, true)
@@ -547,6 +542,14 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 	elseif(extTitle:GetText() == key) then
 		wndDetails:Show(false, true)
 	end
+	
+	if(self.nCurrentMode == 0) then
+		tData = tAppData.tDamageData[key]
+	elseif(self.nCurrentMode == 1) then
+		tData = tAppData.tHealingData[key]
+	end
+
+	self:BuildOrUpdateDetailsPanel(tData, wndDetails, true)
 		
 end
 function EpiCrit:ShowHealing( wndHandler, wndControl, eMouseButton )
