@@ -76,9 +76,9 @@ function EpiCrit:Init()
 	end
 	
 	--Register Combat Events
-	Apollo.RegisterEventHandler("CombatLogDamage","OnCombatLogDamage", self)
-	Apollo.RegisterEventHandler("CombatLogHeal","OnCombatLogHeal", self)
-	--Apollo.RegisterEventHandler("DamageOrHealingDone","OnDamageOrHealing", self)
+	--Apollo.RegisterEventHandler("CombatLogDamage","OnCombatLogDamage", self)
+	--Apollo.RegisterEventHandler("CombatLogHeal","OnCombatLogHeal", self)
+	Apollo.RegisterEventHandler("DamageOrHealingDone","OnDamageOrHealing", self)
 
 end
  
@@ -121,6 +121,7 @@ function EpiCrit:OnDocLoaded()
 		-- Register handlers for events, slash commands and timer, etc.
 		-- e.g. Apollo.RegisterEventHandler("KeyDown", "OnKeyDown", self)
 		Apollo.RegisterSlashCommand("ec", "OnEpiCritOn", self)
+		Apollo.RegisterSlashCommand("ec config", "OnConfig", self)
 		Apollo.RegisterEventHandler("WindowManagementReady", "OnWindowManagementReady", self)
 		-- Do additional Addon initialization here
 		--tAbilities = AbilityBook.GetAbilitiesList()
@@ -239,6 +240,10 @@ if not unitTarget then
 	return
 end
 
+--if bCritical and strSpellName == "Electrocute" then
+--	ChatSystemLib.PostOnChannel(3, "E Crit")
+--end
+
 local sSpellName = strSpellName --tEventArgs.splCallingSpell:GetName()
 local sTargetName = unitTarget:GetName()
 local sCaster = unitCaster:GetName()
@@ -269,6 +274,10 @@ tDamage.sSpellName = sSpellName
 
 local bIsCritical = bCritical
 
+if nShieldDamaged and nShieldDamaged > 0 then
+	nDamage = nDamage + nShieldDamaged
+end
+
 if bIsCritical then
 	tDamage.tCrit.nSpellDamage = nDamage
 	tDamage.tCrit.nTargetLevel = nTargetLevel
@@ -287,20 +296,23 @@ end
 		
 	local bFirstRecord = nil
 	local oEcDamage = nil
+	
 	if (eDamageType == GameLib.CodeEnumDamageType.Physical
 		or eDamageType == GameLib.CodeEnumDamageType.Magic
 		or eDamageType == GameLib.CodeEnumDamageType.Tech ) then
+		
 		bFirstRecord = tAppData.tDamageData[sSpellName] == nil
+		
 		if bFirstRecord then
 			tAppData.tDamageData[sSpellName] = tDamage
 			oEcDamage = tAppData.tDamageData[sSpellName]
-		elseif (eDamageType == GameLib.CodeEnumDamageType.Heal 
-				or eDamageType == GameLib.CodeEnumDamageType.HealShields) then
-			oEcDamage = tAppData.tDamageData[sSpellName]
 		else
-			return
+			oEcDamage = tAppData.tDamageData[sSpellName]
 		end
-	else
+		
+	elseif (eDamageType == GameLib.CodeEnumDamageType.Heal 
+				or eDamageType == GameLib.CodeEnumDamageType.HealShields) then
+
 		bFirstRecord = tAppData.tHealingData[sSpellName] == nil
 		if bFirstRecord then
 			tAppData.tHealingData[sSpellName] = tDamage
@@ -308,6 +320,7 @@ end
 		else
 			oEcDamage = tAppData.tHealingData[sSpellName]
 		end
+		
 	end
 	
 	--NEW ATTEMPTS
