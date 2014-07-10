@@ -723,7 +723,9 @@ function EpiCrit:ToggleConfigurationPanel( wndHandler, wndControl, eMouseButton 
 	wndVersion:SetText(strAddonInfoText)
 	
 	local wndExc = wndPrefs:FindChild("DoNotTrackList")
-	tAbilities = AbilityBook.GetAbilitiesList()
+	if not tAbilities then
+		tAbilities = AbilityBook.GetAbilitiesList()
+	end
 	
 		for k, v in pairs(tAbilities) do
 			if(v.bIsActive and v.nMaxTiers > 1) then
