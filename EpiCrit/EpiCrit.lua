@@ -78,7 +78,8 @@ function EpiCrit:Init()
 	--Register Combat Events
 	Apollo.RegisterEventHandler("CombatLogDamage","OnCombatLogDamage", self)
 	Apollo.RegisterEventHandler("CombatLogHeal","OnCombatLogHeal", self)
-	
+	--Apollo.RegisterEventHandler("DamageOrHealingDone","OnDamageOrHealing", self)
+
 end
  
 function EpiCrit:OnCharCreated()
@@ -229,6 +230,136 @@ function EpiCrit:OnCombatLogDamage(tEventArgs)
 	self:HandleCombatLog(true, tEventArgs)
 end
 
+function EpiCrit:OnDamageOrHealing( unitCaster, unitTarget, eDamageType, nDamage, nShieldDamaged, nAbsorptionAmount, bCritical, strSpellName )
+if not unitCaster then
+	return
+end
+
+if not unitTarget then
+	return
+end
+
+local sSpellName = strSpellName --tEventArgs.splCallingSpell:GetName()
+local sTargetName = unitTarget:GetName()
+local sCaster = unitCaster:GetName()
+
+if(sCaster == sPlayerName) then
+
+local wndDetails = self.wndMain:FindChild("ExtInfoPopout")
+
+if (not unitCaster:IsPvpFlagged() and not tAppData.tUserPrefs.bStickyRecords and wndDetails:IsVisible()) then
+	wndDetails:Show(false, true)
+end
+
+local tSkills = tAppData.tUserPrefs.tExcludedSkills
+			
+			if tSkills then
+				for sk, sv in pairs(tSkills) do
+					if(sk == sSpellName and sv == true) then
+						return
+					end
+				end
+			end
+
+tDamage = self:GetDefaultDamageData()
+
+local nTargetLevel = unitTarget:GetLevel()
+
+tDamage.sSpellName = sSpellName
+
+local bIsCritical = bCritical
+
+if bIsCritical then
+	tDamage.tCrit.nSpellDamage = nDamage
+	tDamage.tCrit.nTargetLevel = nTargetLevel
+	tDamage.tCrit.sTargetName = sTargetName
+	tDamage.tCrit.nNumSuccess = 1
+	tDamage.tCrit.sRecordZone = GameLib.GetCurrentZoneMap().strName
+	tDamage.tCrit.sRecordTime = Time.Now():__tostring()
+else
+	tDamage.tNorm.nSpellDamage = nDamage
+	tDamage.tNorm.nTargetLevel = nTargetLevel
+	tDamage.tNorm.sTargetName = sTargetName
+	tDamage.tNorm.nNumSuccess = 1
+	tDamage.tNorm.sRecordZone = GameLib.GetCurrentZoneMap().strName
+	tDamage.tNorm.sRecordTime = Time.Now():__tostring()
+end
+		
+	local bFirstRecord = nil
+	local oEcDamage = nil
+	if (eDamageType == GameLib.CodeEnumDamageType.Physical
+		or eDamageType == GameLib.CodeEnumDamageType.Magic
+		or eDamageType == GameLib.CodeEnumDamageType.Tech ) then
+		bFirstRecord = tAppData.tDamageData[sSpellName] == nil
+		if bFirstRecord then
+			tAppData.tDamageData[sSpellName] = tDamage
+			oEcDamage = tAppData.tDamageData[sSpellName]
+		elseif (eDamageType == GameLib.CodeEnumDamageType.Heal 
+				or eDamageType == GameLib.CodeEnumDamageType.HealShields) then
+			oEcDamage = tAppData.tDamageData[sSpellName]
+		else
+			return
+		end
+	else
+		bFirstRecord = tAppData.tHealingData[sSpellName] == nil
+		if bFirstRecord then
+			tAppData.tHealingData[sSpellName] = tDamage
+			oEcDamage = tAppData.tHealingData[sSpellName]
+		else
+			oEcDamage = tAppData.tHealingData[sSpellName]
+		end
+	end
+	
+	--NEW ATTEMPTS
+	if bIsCritical then
+		oEcDamage.tCrit.nLastSpellDamage = nDamage
+		oEcDamage.tCrit.sLastTargetName = sTargetName
+		oEcDamage.tCrit.nLastTargetLevel = nTargetLevel
+	else
+		oEcDamage.tNorm.nLastSpellDamage = nDamage
+		oEcDamage.tNorm.sLastTargetName = sTargetName
+		oEcDamage.tNorm.nLastTargetLevel = nTargetLevel
+	end
+	local bRefresh = false
+	--NEW RECORDS
+	if(nDamage > oEcDamage.tCrit.nSpellDamage and bIsCritical) then
+		bRefresh = true
+		oEcDamage.tCrit.sRecordZone = GameLib.GetCurrentZoneMap().strName
+		oEcDamage.tCrit.sRecordTime = Time.Now():__tostring()
+		oEcDamage.tCrit.nSpellDamage = nDamage
+		oEcDamage.tCrit.sTargetName = sTargetName
+		oEcDamage.tCrit.nTargetLevel = nTargetLevel
+		oEcDamage.tCrit.nNumSuccess = oEcDamage.tCrit.nNumSuccess + 1
+		self:OnNewRecord(true, oEcDamage)
+	elseif(nDamage > oEcDamage.tNorm.nSpellDamage) then
+		bRefresh = true
+		oEcDamage.tNorm.sRecordZone = GameLib.GetCurrentZoneMap().strName
+		oEcDamage.tNorm.sRecordTime = Time.Now():__tostring()
+		oEcDamage.tNorm.nSpellDamage = nDamage
+		oEcDamage.tNorm.sTargetName = sTargetName
+		oEcDamage.tNorm.nTargetLevel = nTargetLevel
+		oEcDamage.tNorm.nNumSuccess = oEcDamage.tNorm.nNumSuccess + 1
+		self:OnNewRecord(false, oEcDamage)
+
+	end
+	
+	if bFirstRecord then
+		if bIsCritical then
+			self:OnNewRecord(true, oEcDamage)
+		else
+			self:OnNewRecord(false, oEcDamage)
+		end
+	end
+	
+	if (wndDetails:IsVisible() and bRefresh) then
+		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails, false)
+	end
+	--if bRefresh then
+	self:BuildItemList(self.nCurrentMode)
+	--end
+end
+
+end
 function EpiCrit:HandleCombatLog(bIsDamage, tEventArgs)
 
 if not tEventArgs.unitCaster then
@@ -431,9 +562,9 @@ function EpiCrit:GenerateListItem(key, tData)
 	
 	local nSkillId = 0
 	
-	--if not tAbilities then
+	if not tAbilities then
 		tAbilities = AbilityBook.GetAbilitiesList()
-	--end
+	end
 		
 	for k, v in pairs(tAbilities) do
 		if(v.strName == tData.sSpellName) then
