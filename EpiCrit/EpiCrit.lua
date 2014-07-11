@@ -29,12 +29,12 @@ tAbilities = nil
 tAppData = {}
 
 tChannelList = {
-	["Yell"] = 5,
-	["Party"] = 7,
-	["Zone"] = 9,
-	["PvP"] = 10,
-	["Guild"] = 15,
-	["Instance"] = 32
+	["Yell"] = "y",
+	["Party"] = "p",
+	["Zone"] = "z",
+	["PvP"] = "v",
+	["Guild"] = "g",
+	["Instance"] = "i"
 }
 tSoundList = {
 	["Ach"] = Sound.PlayUIAchievementGranted,
@@ -619,7 +619,7 @@ function EpiCrit:OnNewRecord(bIsCritical,oEcDamage)
 	if (tAppData.tUserPrefs.bAnnounce and bIsCritical) then
 		for k,v in pairs(tAppData.tUserPrefs.tAnnounceChannels) do
 			if v == true then
-				ChatSystemLib.PostOnChannel(tChannelList[k], strText)
+				ChatSystemLib.Command(("/%s %s"):format(tChannelList[k], strText))
 			end
 		end
 	end
