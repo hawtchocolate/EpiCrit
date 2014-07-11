@@ -95,7 +95,7 @@ end
 function EpiCrit:OnCharCreated()
 currentPlayer = GameLib.GetPlayerUnit()
 sPlayerName = GameLib.GetPlayerUnit():GetName()
-	self.bCurrentMode = tAppData.tUserPrefs.bDefaultMode
+	self.nCurrentMode = tAppData.tUserPrefs.nDefaultMode or 0
 	--self:BuildItemList(self.nCurrentMode)
 end
 -----------------------------------------------------------------------------------------------
@@ -143,7 +143,7 @@ function EpiCrit:OnDocLoaded()
 		Apollo.RegisterEventHandler("CharacterCreated","OnCharCreated",self)
 	else
 	sPlayerName = GameLib.GetPlayerUnit():GetName()
-		self.bCurrentMode = tAppData.tUserPrefs.bDefaultMode
+		self.nCurrentMode = tAppData.tUserPrefs.nDefaultMode or 0
 	end
 		--tAbilities = AbilityBook.GetAbilitiesList()
 		--self:BuildItemList(self.nCurrentMode)
@@ -154,7 +154,7 @@ end
 function EpiCrit:OnWindowManagementReady()
     Event_FireGenericEvent("WindowManagementAdd", {wnd = self.wndMain, strName = "EpiCrit"})
 	if tAppData.tUserPrefs.bDisplayWindow then
-		self:BuildItemList(self.bCurrentMode)
+		self:BuildItemList(self.nCurrentMode)
 	end
 
 end
@@ -179,7 +179,7 @@ local appData = {
 	tUserPrefs = {
 		bStickyRecords = false,
 		bDisplayWindow = false,
-		bDefaultMode = true,
+		nDefaultMode = 0,
 		bDisplayNotification = true,
 		bAutoTrackNewSkills = true,
 		tExcludedSkills = {},
@@ -371,7 +371,13 @@ function EpiCrit:AnnounceChecked( wndHandler, wndControl, eMouseButton )
 end
 
 function EpiCrit:DefaultModeChecked( wndHandler, wndControl, eMouseButton )
-	tAppData.tUserPrefs.bDefaultMode = wndControl:IsChecked()
+
+if wndControl:GetName() == "ChkDefaultDamage" then
+	tAppData.tUserPrefs.nDefaultMode = 0
+elseif wndControl:GetName() == "ChkDefaultHealing" then
+	tAppData.tUserPrefs.nDefaultMode = 1
+end
+
 end
 
 -----------------------------------------------------------------------------------------------
@@ -529,7 +535,7 @@ end
 		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails, false)
 	end
 	--if bRefresh then
-	self:BuildItemList(self.bCurrentMode)
+	self:BuildItemList(self.nCurrentMode)
 	--end
 end
 
@@ -662,7 +668,7 @@ end
 		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails, false)
 	end
 	--if bRefresh then
-	self:BuildItemList(self.bCurrentMode)
+	self:BuildItemList(self.nCurrentMode)
 	--end
 end
 
@@ -719,15 +725,15 @@ function EpiCrit:DestroyItemList()
 	self.tItems = {}
 end
 
-function EpiCrit:BuildItemList(bMode)
+function EpiCrit:BuildItemList(nMode)
 
 self:DestroyItemList()
 
-if(bMode == true) then
+if(nMode == 0) then
 for k, v in pairs(tAppData.tDamageData) do
  self:GenerateListItem(k,v,0)
 end
-elseif(bMode == false) then
+elseif(nMode == 1) then
 for k, v in pairs(tAppData.tHealingData) do
  self:GenerateListItem(k,v,1)
 end
@@ -874,9 +880,9 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 		wndDetails:Show(false, true)
 	end
 	
-	if(self.bCurrentMode == true) then
+	if(self.nCurrentMode == 0) then
 		tData = tAppData.tDamageData[key]
-	elseif(self.bCurrentMode == false) then
+	elseif(self.nCurrentMode == 1) then
 		tData = tAppData.tHealingData[key]
 	end
 
@@ -884,19 +890,19 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 		
 end
 function EpiCrit:ShowHealing( wndHandler, wndControl, eMouseButton )
-	self.bCurrentMode = false
-	self:BuildItemList(self.bCurrentMode)
+	self.nCurrentMode = 1
+	self:BuildItemList(self.nCurrentMode)
 end
 
 function EpiCrit:ShowDamage( wndHandler, wndControl, eMouseButton )
-	self.bCurrentMode = true
-	self:BuildItemList(self.bCurrentMode)
+	self.nCurrentMode = 0
+	self:BuildItemList(self.nCurrentMode)
 end
 
 function EpiCrit:Reset( wndHandler, wndControl, eMouseButton )
 	tAppData.tDamageData = {}
 	tAppData.tHealingData = {}
-	self:BuildItemList(tAppData.tUserPrefs.bDefaultMode)
+	self:BuildItemList(tAppData.tUserPrefs.nDefaultMode)
 end
 
 function EpiCrit:ToggleConfigurationPanel( wndHandler, wndControl, eMouseButton )
@@ -909,9 +915,14 @@ function EpiCrit:ToggleConfigurationPanel( wndHandler, wndControl, eMouseButton 
 	
 	local chkStickyRecords = self.wndConfig:FindChild("ChkStickyRecords")
 	chkStickyRecords:SetCheck(tAppData.tUserPrefs.bStickyRecords)
-	
-	local chkDefaultMode = self.wndConfig:FindChild("ChkDefaultMode")
-	chkDefaultMode:SetCheck(tAppData.tUserPrefs.bDefaultMode)
+
+	if (tAppData.tUserPrefs.nDefaultMode == 0) then
+		local chkDefaultMode = self.wndConfig:FindChild("ChkDefaultDamage")
+		chkDefaultMode:SetCheck(true)
+	elseif (tAppData.tUserPrefs.nDefaultMode == 1) then
+		local chkDefaultMode = self.wndConfig:FindChild("ChkDefaultHealing")
+		chkDefaultMode:SetCheck(true)
+	end
 	
 	local chkAnnounce = self.wndConfig:FindChild("ChkAnnounce")
 	chkAnnounce:SetCheck(tAppData.tUserPrefs.bAnnounce)
