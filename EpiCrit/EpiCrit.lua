@@ -809,7 +809,6 @@ if tSavedData == nil or tableLength(tSavedData) <= 0 then
 	self:PostToDebugChannel("No saved data")
 	tSavedData = self:GetDefaultAppData()
 end
-SendVarToRover("PreRestore", {eType, tSavedData})
   if eType == GameLib.CodeEnumAddonSaveLevel.Character then
     for k,v in pairs(tSavedData) do
       tAppData[k] = v
