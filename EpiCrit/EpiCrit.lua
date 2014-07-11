@@ -55,7 +55,6 @@ end
 function EpiCrit:GetConfigChild(strChild)
 	return self.wndConfig:FindChild(strChild)
 end
-
 -----------------------------------------------------------------------------------------------
 -- Initialization
 -----------------------------------------------------------------------------------------------
@@ -65,7 +64,8 @@ function EpiCrit:new(o)
     self.__index = self 
 
     -- initialize variables here
-	o.tItems = {}
+	o.tDamageItems = {}
+	o.tHealingItems = {}
 	o.wndNewRecord = nil
 	o.wndConfig = nil
 	o.atNewRecord = ApolloTimer.Create(2, false, "OnNewRecordDestroy", o)
@@ -99,6 +99,7 @@ function EpiCrit:OnLoad()
 	self.wndNewRecord = Apollo.LoadForm(self.xmlDoc, "EpiCritGranted", nil, self)
 	self.wndConfig = Apollo.LoadForm(self.xmlDoc, "EpiCritConfig", nil, self)
 	--Not sure why I am having to hide the form, it should not show automatically.
+	self.wndNewRecord:Show(false, true)
 	self.wndConfig:Show(false, true)
 	self.xmlDoc:RegisterCallback("OnDocLoaded", self)
 end
@@ -198,6 +199,7 @@ end
 function EpiCrit:GetDefaultAppData()
 local appData = {
 	tUserPrefs = {
+		tNotificationLocation = {},
 		bStickyRecords = false,
 		bDisplayWindow = false,
 		nDefaultMode = 0,
@@ -323,6 +325,10 @@ function EpiCrit:SaveConfig()
 	local textBoxAnnounceFormat = self:GetConfigChild("TextBoxAnnounceFormat")
 	tAppData.tUserPrefs.strAnnounceFormat = textBoxAnnounceFormat:GetText()
 	
+	if self.wndNewRecord:IsVisible() then
+		self:SetNotificationPosition()
+	end
+	
 	local doNotTrackList = self:GetConfigChild("DoNotTrackList")
 	local chatChannels = self:GetConfigChild("ChatChannels")
 	local sounds = self:GetConfigChild("Sounds")
@@ -365,6 +371,60 @@ elseif wndControl:GetName() == "ChkDefaultHealing" then
 	tAppData.tUserPrefs.nDefaultMode = 1
 end
 
+end
+
+function EpiCrit:SetNotificationPosition()
+	if not self.wndNewRecord:IsVisible() then
+		if (tAppData.tUserPrefs.tNotificationLocation ~= nil and tableLength(tAppData.tUserPrefs.tNotificationLocation) > 0) then
+			local tPoints = tAppData.tUserPrefs.tNotificationLocation.fPoints
+			local tOffsets = tAppData.tUserPrefs.tNotificationLocation.nOffsets
+			
+			self.wndNewRecord:SetAnchorOffsets(tOffsets[1], tOffsets[2], tOffsets[3], tOffsets[4])
+			self.wndNewRecord:SetAnchorPoints(tPoints[1], tPoints[2], tPoints[3], tPoints[4])
+		else
+			local tDefaultLoc = {
+					fPoints = {0.5,0,0.5,0},
+					nOffsets = {-200,50,200,125}
+				}
+			local tPoints = tDefaultLoc.fPoints
+			local tOffsets = tDefaultLoc.nOffsets
+					
+			self.wndNewRecord:SetAnchorOffsets(tOffsets[1], tOffsets[2], tOffsets[3], tOffsets[4])
+			self.wndNewRecord:SetAnchorPoints(tPoints[1], tPoints[2], tPoints[3], tPoints[4])
+		end		
+		self.wndNewRecord:SetStyle("Moveable", true)
+		self.wndNewRecord:SetStyle("Sizable", true)
+		self.wndNewRecord:Show(true, true)
+	else
+		tAppData.tUserPrefs.tNotificationLocation = self.wndNewRecord:GetLocation():ToTable()		
+		self.wndNewRecord:SetStyle("Moveable", false)
+		self.wndNewRecord:SetStyle("Sizable", false)
+		self.wndNewRecord:Show(false, true)
+	end
+end
+function EpiCrit:OnSetNotificationPosition( wndHandler, wndControl, eMouseButton )
+	self:SetNotificationPosition()
+end
+
+function EpiCrit:RestoreDefaults( wndHandler, wndControl, eMouseButton )
+	self:SetDefaultNotificationPosition()
+	tAppData = self:GetDefaultAppData()
+	self:SetConfigurationPanel()
+end
+function EpiCrit:SetDefaultNotificationPosition()
+	local tDefaultLoc = {
+	fPoints = {0.5,0,0.5,0},
+	nOffsets = {-200,50,200,125}
+}
+	tAppData.tUserPrefs.tNotificationLocation = tDefaultLoc
+	local tPoints = tAppData.tUserPrefs.tNotificationLocation.fPoints
+	local tOffsets = tAppData.tUserPrefs.tNotificationLocation.nOffsets
+			
+	self.wndNewRecord:SetAnchorOffsets(tOffsets[1], tOffsets[2], tOffsets[3], tOffsets[4])
+	self.wndNewRecord:SetAnchorPoints(tPoints[1], tPoints[2], tPoints[3], tPoints[4])
+end
+function EpiCrit:OnResetNotificationPosition( wndHandler, wndControl, eMouseButton )
+	self:SetDefaultNotificationPosition()
 end
 
 -----------------------------------------------------------------------------------------------
@@ -538,16 +598,23 @@ function EpiCrit:OnNewRecord(bIsCritical,oEcDamage)
 		
 		wndRecordLabel:SetText(recordText)
 		
+		if (tAppData.tUserPrefs.tNotificationLocation ~= nil and tableLength(tAppData.tUserPrefs.tNotificationLocation) > 0) then
+			local tPoints = tAppData.tUserPrefs.tNotificationLocation.fPoints
+			local tOffsets = tAppData.tUserPrefs.tNotificationLocation.nOffsets
+			
+			self.wndNewRecord:SetAnchorOffsets(tOffsets[1], tOffsets[2], tOffsets[3], tOffsets[4])
+			self.wndNewRecord:SetAnchorPoints(tPoints[1], tPoints[2], tPoints[3], tPoints[4])
+		end
 		self.wndNewRecord:Show(true, true)
 		self.atNewRecord:Start()
 	end
 	
 	local strText = tAppData.tUserPrefs.strAnnounceFormat
 	
-	strText = string.gsub(strText, "$p", sPlayerName)
-	strText = string.gsub(strText, "$s", oEcDamage.sSpellName)
-	strText = string.gsub(strText, "$t", oEcDamage.tCrit.sTargetName)
-	strText = string.gsub(strText, "$d", tostring(oEcDamage.tCrit.nSpellDamage))
+	strText = string.gsub(strText, "$p", sPlayerName or "Somebody Special")
+	strText = string.gsub(strText, "$s", oEcDamage.sSpellName or "Supaa Spell")
+	strText = string.gsub(strText, "$t", oEcDamage.tCrit.sTargetName or "Some Bad Guy")
+	strText = string.gsub(strText, "$d", tostring(oEcDamage.tCrit.nSpellDamage) or "1")
 	
 	if (tAppData.tUserPrefs.bAnnounce and bIsCritical) then
 		for k,v in pairs(tAppData.tUserPrefs.tAnnounceChannels) do
@@ -566,16 +633,31 @@ end
 
 function EpiCrit:DestroyItemList()
 	-- destroy all the wnd inside the list
-	for k,v in pairs(self.tItems) do
+	for k,v in pairs(self.tDamageItems) do
+		v:Destroy()
+	end
+		for k,v in pairs(self.tHealingItems) do
 		v:Destroy()
 	end
 	-- clear the list item array
-	self.tItems = {}
+	self.tDamageItems = {}
+	self.tHealingItems = {}
+end
+function EpiCrit:HideItemsInList(nMode)
+if(nMode == 0) then
+for k, w in pairs(self.tDamageItems) do
+ w:Show(false, true)
+end
+elseif(nMode == 1) then
+for k, w in pairs(self.tHealingItems) do
+ w:Show(false, true)
+end
 end
 
+end
 function EpiCrit:BuildItemList(nMode)
 
-self:DestroyItemList()
+--self:DestroyItemList()
 
 if(nMode == 0) then
 for k, v in pairs(tAppData.tDamageData) do
@@ -590,14 +672,27 @@ end
 end
 
 
-function EpiCrit:GenerateListItem(key, tData)
+function EpiCrit:GenerateListItem(key, tData, nMode)
 	-- load the window item for the list item
-	local wnd = Apollo.LoadForm(self.xmlDoc, "EpiCritListItem", self.wndItemList, self)
-	wnd:SetAnchorPoints(0,0,1,0)
-	wnd:SetAnchorOffsets(0,0,0,67)
-	-- keep track of the window item created
-	self.tItems[key] = wnd
-
+	local wnd = nil
+	local items = nil
+	if nMode == 0 then
+		items = self.tDamageItems
+	elseif nMode == 1 then
+		items = self.tHealingItems
+	else
+		return
+	end
+	
+	if items[key] == nil then
+		wnd = Apollo.LoadForm(self.xmlDoc, "EpiCritListItem", self.wndItemList, self)
+		wnd:SetAnchorPoints(0,0,1,0)
+		wnd:SetAnchorOffsets(0,0,0,67)
+		-- keep track of the window item created
+		items[key] = wnd
+	else
+		wnd = items[key]
+	end
 	-- give it a piece of data to refer to 
 	local wndSkillName = wnd:FindChild("SkillName")
 	local wndNmlDmgVal = wnd:FindChild("NormalDmgValue")
@@ -629,6 +724,9 @@ function EpiCrit:GenerateListItem(key, tData)
 	wndCritDmgVal:SetText(tostring(tData.tCrit.nSpellDamage))
 	wndCritDmgTar:SetText(tData.tCrit.sTargetName)
 	
+	if not wnd:IsVisible() then
+		wnd:Show(true, true)
+	end
 	--wnd:SetData(i)
 end
 
@@ -738,22 +836,23 @@ function EpiCrit:ShowRecordDetails( wndHandler, wndControl, eMouseButton )
 end
 function EpiCrit:ShowHealing( wndHandler, wndControl, eMouseButton )
 	self.nCurrentMode = 1
+	self:HideItemsInList(0)
 	self:BuildItemList(self.nCurrentMode)
 end
 
 function EpiCrit:ShowDamage( wndHandler, wndControl, eMouseButton )
 	self.nCurrentMode = 0
+	self:HideItemsInList(1)
 	self:BuildItemList(self.nCurrentMode)
 end
 
 function EpiCrit:Reset( wndHandler, wndControl, eMouseButton )
 	tAppData.tDamageData = {}
 	tAppData.tHealingData = {}
-	self:BuildItemList(tAppData.tUserPrefs.nDefaultMode)
+	self:DestroyItemList()
+	--self:BuildItemList(tAppData.tUserPrefs.nDefaultMode)
 end
-
-function EpiCrit:ToggleConfigurationPanel( wndHandler, wndControl, eMouseButton )
-
+function EpiCrit:SetConfigurationPanel()
 	local chkDisplayNotif = self.wndConfig:FindChild("ChkDisplayNotif")
 	chkDisplayNotif:SetCheck(tAppData.tUserPrefs.bDisplayNotification)
 	
@@ -817,7 +916,9 @@ function EpiCrit:ToggleConfigurationPanel( wndHandler, wndControl, eMouseButton 
 		end
 		
 	wndExc:ArrangeChildrenVert()
-	
+end
+function EpiCrit:ToggleConfigurationPanel( wndHandler, wndControl, eMouseButton )
+	self:SetConfigurationPanel()
 	self:OnConfig()
 	
 end
