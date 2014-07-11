@@ -15,22 +15,18 @@ require "AbilityBook"
 -- EpiCrit Module Definition
 -----------------------------------------------------------------------------------------------
 local EpiCrit = {} 
- 
------------------------------------------------------------------------------------------------
--- Constants
------------------------------------------------------------------------------------------------
--- e.g. local kiExampleVariableMax = 999
+
 
 -----------------------------------------------------------------------------------------------
 -- Globals
 -----------------------------------------------------------------------------------------------
 tAddonVersion = {"1","0","6"}
 strAddonVersion = tAddonVersion[1] .. "." .. tAddonVersion[2] .. "." .. tAddonVersion[3]
+
 currentPlayer = nil
 sPlayerName = nil
 tAbilities = nil
 tAppData = {}
-strCurrentDetails = nil
 
 tChannelList = {
 	["Yell"] = 5,
@@ -73,7 +69,7 @@ function EpiCrit:new(o)
 	o.wndNewRecord = nil
 	o.wndConfig = nil
 	o.atNewRecord = ApolloTimer.Create(2, false, "OnNewRecordDestroy", o)
-	--o.nCurrentMode = tAppData.tUserPrefs.nDefaultMode or 0	
+
     return o
 end
 
@@ -84,10 +80,6 @@ function EpiCrit:Init()
 		-- "UnitOrPackageName",
 	}
     Apollo.RegisterAddon(self, bHasConfigureFunction, strConfigureButtonText, tDependencies)
-	
-	--Register Combat Events
-	--Apollo.RegisterEventHandler("CombatLogDamage","OnCombatLogDamage", self)
-	--Apollo.RegisterEventHandler("CombatLogHeal","OnCombatLogHeal", self)
 	Apollo.RegisterEventHandler("DamageOrHealingDone","OnDamageOrHealing", self)
 
 end
@@ -95,8 +87,7 @@ end
 function EpiCrit:OnCharCreated()
 currentPlayer = GameLib.GetPlayerUnit()
 sPlayerName = GameLib.GetPlayerUnit():GetName()
-	self.nCurrentMode = tAppData.tUserPrefs.nDefaultMode or 0
-	--self:BuildItemList(self.nCurrentMode)
+self.nCurrentMode = tAppData.tUserPrefs.nDefaultMode or 0
 end
 -----------------------------------------------------------------------------------------------
 -- EpiCrit OnLoad
@@ -107,6 +98,7 @@ function EpiCrit:OnLoad()
 	
 	self.wndNewRecord = Apollo.LoadForm(self.xmlDoc, "EpiCritGranted", nil, self)
 	self.wndConfig = Apollo.LoadForm(self.xmlDoc, "EpiCritConfig", nil, self)
+	--Not sure why I am having to hide the form, it should not show automatically.
 	self.wndConfig:Show(false, true)
 	self.xmlDoc:RegisterCallback("OnDocLoaded", self)
 end
@@ -145,8 +137,6 @@ function EpiCrit:OnDocLoaded()
 	sPlayerName = GameLib.GetPlayerUnit():GetName()
 		self.nCurrentMode = tAppData.tUserPrefs.nDefaultMode or 0
 	end
-		--tAbilities = AbilityBook.GetAbilitiesList()
-		--self:BuildItemList(self.nCurrentMode)
 		self.wndMain:Show(tAppData.tUserPrefs.bDisplayWindow, true)
 	end
 end
@@ -161,9 +151,6 @@ end
 -----------------------------------------------------------------------------------------------
 -- EpiCrit Functions
 -----------------------------------------------------------------------------------------------
--- Define general functions here
-
--- on SlashCommand "/ec"
 function EpiCrit:OnEpiCrit()
 	self.wndMain:Invoke()
 end
@@ -172,28 +159,6 @@ function EpiCrit:OnConfig()
 	self.wndConfig:Show(not self.wndConfig:IsVisible(), true)
 	self.wndConfig:ToFront()
 	self:SaveConfig()
-end
-
-function EpiCrit:GetDefaultAppData()
-local appData = {
-	tUserPrefs = {
-		bStickyRecords = false,
-		bDisplayWindow = false,
-		nDefaultMode = 0,
-		bDisplayNotification = true,
-		bAutoTrackNewSkills = true,
-		tExcludedSkills = {},
-		bPlaySound = false,
-		bAnnounce = false,
-		tAnnounceChannels = {},
-		strAnnounceSound = nil,
-		bPostToWhisper = false,
-		strAnnounceFormat = "$p achieved a new critical hit record! By casting $s on $t for $d damage!"
-	},
-	tDamageData = {},
-	tHealingData = {}
-}
-return appData
 end
 
 -----------------------------------------------------------------------------------------------
@@ -228,6 +193,28 @@ local tDefaultDamageData = {
 	}
 }
 return tDefaultDamageData
+end
+--Defautl App Data
+function EpiCrit:GetDefaultAppData()
+local appData = {
+	tUserPrefs = {
+		bStickyRecords = false,
+		bDisplayWindow = false,
+		nDefaultMode = 0,
+		bDisplayNotification = true,
+		bAutoTrackNewSkills = true,
+		tExcludedSkills = {},
+		bPlaySound = false,
+		bAnnounce = false,
+		tAnnounceChannels = {},
+		strAnnounceSound = nil,
+		bPostToWhisper = false,
+		strAnnounceFormat = "$p achieved a new critical hit record! By casting $s on $t for $d damage!"
+	},
+	tDamageData = {},
+	tHealingData = {}
+}
+return appData
 end
 ---------------------------------------------------------------------------------------------------
 -- EpiCritHud Functions
@@ -389,14 +376,6 @@ EpiCritInst:Init()
 -----------------------------------------------------------------------------------------------
 -- EpiCrit Imp
 -----------------------------------------------------------------------------------------------
---Heal
-function EpiCrit:OnCombatLogHeal(tEventArgs)
-	self:HandleCombatLog(false, tEventArgs)
-end
---Damage
-function EpiCrit:OnCombatLogDamage(tEventArgs)
-	self:HandleCombatLog(true, tEventArgs)
-end
 
 function EpiCrit:OnDamageOrHealing( unitCaster, unitTarget, eDamageType, nDamage, nShieldDamaged, nAbsorptionAmount, bCritical, strSpellName )
 if not unitCaster then
@@ -540,139 +519,6 @@ end
 end
 
 end
-function EpiCrit:HandleCombatLog(bIsDamage, tEventArgs)
-
-if not tEventArgs.unitCaster then
-	return
-end
-
-if not tEventArgs.unitTarget then
-	return
-end
-
-local sSpellName = tEventArgs.splCallingSpell:GetName()
-local sTargetName = tEventArgs.unitTarget:GetName()
-local nDamage = nil
-local sCaster = tEventArgs.unitCaster:GetName()
-
-if(sCaster == sPlayerName) then
-
-local wndDetails = self.wndMain:FindChild("ExtInfoPopout")
-
-if (not tEventArgs.unitCaster:IsPvpFlagged() and not tAppData.tUserPrefs.bStickyRecords and wndDetails:IsVisible()) then
-	wndDetails:Show(false, true)
-end
-
-local tSkills = tAppData.tUserPrefs.tExcludedSkills
-			
-			if tSkills then
-				for sk, sv in pairs(tSkills) do
-					if(sk == sSpellName and sv == true) then
-						return
-					end
-				end
-			end
-
-tDamage = self:GetDefaultDamageData()
-
-if bIsDamage then
-	nDamage = tEventArgs.nDamageAmount or 0
-else
-	nDamage = tEventArgs.nHealAmount or 0
-end
-
-local nTargetLevel = tEventArgs.unitTarget:GetLevel()
-
-tDamage.sSpellName = sSpellName
-
-local bIsCritical = tEventArgs.eCombatResult == GameLib.CodeEnumCombatResult.Critical
-
-if bIsCritical then
-	tDamage.tCrit.nSpellDamage = nDamage
-	tDamage.tCrit.nTargetLevel = nTargetLevel
-	tDamage.tCrit.sTargetName = sTargetName
-	tDamage.tCrit.nNumSuccess = 1
-	tDamage.tCrit.sRecordZone = GameLib.GetCurrentZoneMap().strName
-	tDamage.tCrit.sRecordTime = Time.Now():__tostring()
-else
-	tDamage.tNorm.nSpellDamage = nDamage
-	tDamage.tNorm.nTargetLevel = nTargetLevel
-	tDamage.tNorm.sTargetName = sTargetName
-	tDamage.tNorm.nNumSuccess = 1
-	tDamage.tNorm.sRecordZone = GameLib.GetCurrentZoneMap().strName
-	tDamage.tNorm.sRecordTime = Time.Now():__tostring()
-end
-		
-	local bFirstRecord = nil
-	local oEcDamage = nil
-	if bIsDamage then
-		bFirstRecord = tAppData.tDamageData[sSpellName] == nil
-		if bFirstRecord then
-			tAppData.tDamageData[sSpellName] = tDamage
-			oEcDamage = tAppData.tDamageData[sSpellName]
-		else
-			oEcDamage = tAppData.tDamageData[sSpellName]
-		end
-	else
-		bFirstRecord = tAppData.tHealingData[sSpellName] == nil
-		if bFirstRecord then
-			tAppData.tHealingData[sSpellName] = tDamage
-			oEcDamage = tAppData.tHealingData[sSpellName]
-		else
-			oEcDamage = tAppData.tHealingData[sSpellName]
-		end
-	end
-	
-	--NEW ATTEMPTS
-	if bIsCritical then
-		oEcDamage.tCrit.nLastSpellDamage = nDamage
-		oEcDamage.tCrit.sLastTargetName = sTargetName
-		oEcDamage.tCrit.nLastTargetLevel = nTargetLevel
-	else
-		oEcDamage.tNorm.nLastSpellDamage = nDamage
-		oEcDamage.tNorm.sLastTargetName = sTargetName
-		oEcDamage.tNorm.nLastTargetLevel = nTargetLevel
-	end
-	local bRefresh = false
-	--NEW RECORDS
-	if(nDamage > oEcDamage.tCrit.nSpellDamage and bIsCritical) then
-		bRefresh = true
-		oEcDamage.tCrit.sRecordZone = GameLib.GetCurrentZoneMap().strName
-		oEcDamage.tCrit.sRecordTime = Time.Now():__tostring()
-		oEcDamage.tCrit.nSpellDamage = nDamage
-		oEcDamage.tCrit.sTargetName = sTargetName
-		oEcDamage.tCrit.nTargetLevel = nTargetLevel
-		oEcDamage.tCrit.nNumSuccess = oEcDamage.tCrit.nNumSuccess + 1
-		self:OnNewRecord(true, oEcDamage)
-	elseif(nDamage > oEcDamage.tNorm.nSpellDamage) then
-		bRefresh = true
-		oEcDamage.tNorm.sRecordZone = GameLib.GetCurrentZoneMap().strName
-		oEcDamage.tNorm.sRecordTime = Time.Now():__tostring()
-		oEcDamage.tNorm.nSpellDamage = nDamage
-		oEcDamage.tNorm.sTargetName = sTargetName
-		oEcDamage.tNorm.nTargetLevel = nTargetLevel
-		oEcDamage.tNorm.nNumSuccess = oEcDamage.tNorm.nNumSuccess + 1
-		self:OnNewRecord(false, oEcDamage)
-
-	end
-	
-	if bFirstRecord then
-		if bIsCritical then
-			self:OnNewRecord(true, oEcDamage)
-		else
-			self:OnNewRecord(false, oEcDamage)
-		end
-	end
-	
-	if (wndDetails:IsVisible() and bRefresh) then
-		self:BuildOrUpdateDetailsPanel(oEcDamage, wndDetails, false)
-	end
-	--if bRefresh then
-	self:BuildItemList(self.nCurrentMode)
-	--end
-end
-
-end
 
 function EpiCrit:OnNewRecordDestroy()
 	self.wndNewRecord:Show(false, true)
@@ -695,7 +541,9 @@ function EpiCrit:OnNewRecord(bIsCritical,oEcDamage)
 		self.wndNewRecord:Show(true, true)
 		self.atNewRecord:Start()
 	end
+	
 	local strText = tAppData.tUserPrefs.strAnnounceFormat
+	
 	strText = string.gsub(strText, "$p", sPlayerName)
 	strText = string.gsub(strText, "$s", oEcDamage.sSpellName)
 	strText = string.gsub(strText, "$t", oEcDamage.tCrit.sTargetName)
