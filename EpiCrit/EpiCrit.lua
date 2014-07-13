@@ -16,11 +16,10 @@ require "AbilityBook"
 -----------------------------------------------------------------------------------------------
 local EpiCrit = {} 
 
-
 -----------------------------------------------------------------------------------------------
 -- Globals
 -----------------------------------------------------------------------------------------------
-tAddonVersion = {"1","0","8"}
+tAddonVersion = {"1","0","9"}
 strAddonVersion = tAddonVersion[1] .. "." .. tAddonVersion[2] .. "." .. tAddonVersion[3]
 
 currentPlayer = nil
@@ -453,6 +452,10 @@ end
 local sSpellName = strSpellName --tEventArgs.splCallingSpell:GetName()
 local sTargetName = unitTarget:GetName()
 local sCaster = unitCaster:GetName()
+
+if(sCaster == sTargetName) then
+	return
+end
 
 if(sCaster == sPlayerName) then
 
