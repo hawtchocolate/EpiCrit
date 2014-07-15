@@ -202,6 +202,8 @@ local appData = {
 		bStickyRecords = false,
 		bDisplayWindow = false,
 		nDefaultMode = 0,
+		bTrackSelfHealing = false,
+		bTrackSelfDamage = false,
 		bDisplayNotification = true,
 		bAutoTrackNewSkills = true,
 		tExcludedSkills = {},
@@ -234,18 +236,68 @@ function EpiCrit:DisplayWindowChecked( wndHandler, wndControl, eMouseButton )
 	tAppData.tUserPrefs.bDisplayWindow = wndControl:IsChecked()
 end
 
+function EpiCrit:DoNotTrack( wndHandler, wndControl, eMouseButton )
+	local key = self.wndMain:FindChild("ExtInfoPopout"):FindChild("Title"):GetText()
+	tAppData.tUserPrefs.tExcludedSkills[key] = true
+	self:DeleteSkillData()
+	if self.wndConfig:IsVisible() then
+	self:SetConfigurationPanel()
+	end
+end
+
+function EpiCrit:DeleteDataForSkill( wndHandler, wndControl, eMouseButton )
+	self:DeleteSkillData()
+end
+
+function EpiCrit:ShowSkillOptions( wndHandler, wndControl, eMouseButton )
+	local wndOptions = self.wndMain:FindChild("ExtInfoOptions");
+	wndOptions:Show(not wndOptions:IsVisible(), true);
+end
+function EpiCrit:DeleteSkillData()
+local key = self.wndMain:FindChild("ExtInfoPopout"):FindChild("Title"):GetText()
+	if self.nCurrentMode == 0 then
+		table.removekey(tAppData.tDamageData, key)
+		for k,v in pairs(self.tDamageItems) do
+			if k == key then
+				v:Destroy()
+			end
+		end
+		table.removekey(self.tDamageItems, key)
+	else
+		table.removekey(tAppData.tHealingData, key)
+		for k,v in pairs(self.tHealingItems) do
+			if k == key then
+				v:Destroy()
+			end
+		end
+		table.removekey(self.tHealingItems, key)
+	end
+	self.wndMain:FindChild("ExtInfoPopout"):Show(false, true)
+	self.wndMain:FindChild("ExtInfoOptions"):Show(false, true)
+	self:BuildItemList(self.nCurrentMode)
+end
 ---------------------------------------------------------------------------------------------------
 -- EpiCritListItem Functions
 ---------------------------------------------------------------------------------------------------
 
+function EpiCrit:OnGenerateTooltip(wndHandler, wndControl, tType, splTarget)
+	if wndControl == wndHandler then
+		if wndControl:GetAbilityTierId() and splTarget:GetId() ~= wndControl:GetAbilityTierId() then
+			splTarget = GameLib.GetSpell(wndControl:GetAbilityTierId())
+		end
+
+		Tooltip.GetSpellTooltipForm(self, wndHandler, splTarget, false)
+	end
+end
 ---------------------------------------------------------------------------------------------------
 -- ExcludedSkillListItem Functions
 ---------------------------------------------------------------------------------------------------
 
 function EpiCrit:ExcludedSkillChecked( wndHandler, wndControl, eMouseButton )
 	local tData = wndControl:GetData()
-	if tData then
-		tAppData.tUserPrefs.tExcludedSkills[tData.strName] = wndControl:IsChecked()
+	if not wndControl:IsChecked() then
+		tAppData.tUserPrefs.tExcludedSkills[tData] = false
+		self:SetConfigurationPanel()
 	end
 end
 
@@ -426,6 +478,14 @@ function EpiCrit:OnResetNotificationPosition( wndHandler, wndControl, eMouseButt
 	self:SetDefaultNotificationPosition()
 end
 
+function EpiCrit:TrackSelfDamageChecked( wndHandler, wndControl, eMouseButton )
+tAppData.tUserPrefs.bTrackSelfDamage = wndControl:IsChecked()
+end
+
+function EpiCrit:TrackSelfHealingChecked( wndHandler, wndControl, eMouseButton )
+tAppData.tUserPrefs.bTrackSelfHealing = wndControl:IsChecked()
+end
+
 -----------------------------------------------------------------------------------------------
 -- EpiCrit Instance
 -----------------------------------------------------------------------------------------------
@@ -445,15 +505,21 @@ if not unitTarget then
 	return
 end
 
---if bCritical and strSpellName == "Electrocute" then
---	ChatSystemLib.PostOnChannel(3, "E Crit")
---end
+bIsDamage = false
+if (eDamageType == GameLib.CodeEnumDamageType.Physical
+		or eDamageType == GameLib.CodeEnumDamageType.Magic
+		or eDamageType == GameLib.CodeEnumDamageType.Tech ) then
+		bIsDamage = true
+end
+
 
 local sSpellName = strSpellName --tEventArgs.splCallingSpell:GetName()
 local sTargetName = unitTarget:GetName()
 local sCaster = unitCaster:GetName()
 
-if(sCaster == sTargetName) then
+if(sCaster == sTargetName and bIsDamage == true and (tAppData.tUserPrefs.bTrackSelfDamage == false or tAppData.tUserPrefs.bTrackSelfDamage == nil)) then
+	return
+elseif (sCaster == sTargetName and bIsDamage == false and (tAppData.tUserPrefs.bTrackSelfHealing == false or tAppData.tUserPrefs.bTrackSelfHealing == nil)) then
 	return
 end
 
@@ -506,9 +572,7 @@ end
 	local bFirstRecord = nil
 	local oEcDamage = nil
 	
-	if (eDamageType == GameLib.CodeEnumDamageType.Physical
-		or eDamageType == GameLib.CodeEnumDamageType.Magic
-		or eDamageType == GameLib.CodeEnumDamageType.Tech ) then
+	if (bIsDamage) then
 		
 		bFirstRecord = tAppData.tDamageData[sSpellName] == nil
 		
@@ -519,9 +583,7 @@ end
 			oEcDamage = tAppData.tDamageData[sSpellName]
 		end
 		
-	elseif (eDamageType == GameLib.CodeEnumDamageType.Heal 
-				or eDamageType == GameLib.CodeEnumDamageType.HealShields) then
-
+	else
 		bFirstRecord = tAppData.tHealingData[sSpellName] == nil
 		if bFirstRecord then
 			tAppData.tHealingData[sSpellName] = tDamage
@@ -632,6 +694,7 @@ function EpiCrit:OnNewRecord(bIsCritical,oEcDamage)
 	if (tAppData.tUserPrefs.bPlaySound and bIsCritical) then 
 		Sound.Play(tSoundList[tAppData.tUserPrefs.strAnnounceSound])
 	end
+	
 end
 
 function EpiCrit:DestroyItemList()
@@ -716,7 +779,6 @@ function EpiCrit:GenerateListItem(key, tData, nMode)
 			break
 		end
 	end
-	
 	local wndSkillIcon = wnd:FindChild("AbilityItemWindow"):SetAbilityId(nSkillId)
 
 	btnDetails:SetContentType(key)
@@ -751,7 +813,11 @@ function tableLength(T)
 	for _ in pairs(T) do count = count +1 end
 	return count
 end
-
+function table.removekey(table, key)
+    local element = table[key]
+    table[key] = nil
+    return element
+end
  
 function EpiCrit:OnRestore(eType, tSavedData)
 if tSavedData == nil or tableLength(tSavedData) <= 0 then
@@ -873,6 +939,12 @@ function EpiCrit:SetConfigurationPanel()
 		chkDefaultMode:SetCheck(true)
 	end
 	
+	local chkSelfDamage = self.wndConfig:FindChild("ChkSelfDamage")
+	chkSelfDamage:SetCheck(tAppData.tUserPrefs.bTrackSelfDamage)
+
+	local chkSelfHealing = self.wndConfig:FindChild("ChkSelfHealing")
+	chkSelfHealing:SetCheck(tAppData.tUserPrefs.bTrackSelfHealing)
+	
 	local chkAnnounce = self.wndConfig:FindChild("ChkAnnounce")
 	chkAnnounce:SetCheck(tAppData.tUserPrefs.bAnnounce)
 
@@ -893,30 +965,21 @@ function EpiCrit:SetConfigurationPanel()
 	local wndVersion = self.wndConfig:FindChild("AddonInfo")
 	wndVersion:SetText(strAddonInfoText)
 	
-	local wndExc = self.wndConfig:FindChild("DoNotTrackList")
-	if not tAbilities then
-		tAbilities = AbilityBook.GetAbilitiesList()
-	end
-	
-		for k, v in pairs(tAbilities) do
-			if(v.bIsActive and v.nMaxTiers > 1) then
-			local wnd = Apollo.LoadForm(self.xmlDoc, "ExcludedSkillListItem", wndExc, self)
-			local chkExclude = wnd:FindChild("ChkExclude")
-			
+	local wndExc = self.wndConfig:FindChild("DoNotTrackList")	
+			wndExc:DestroyChildren()
 			local tSkills = tAppData.tUserPrefs.tExcludedSkills
 			
 			if tSkills then
 				for sk, sv in pairs(tSkills) do
-					if(sk == v.strName) then
-						chkExclude:SetCheck(sv or false)
+					if sv == true then
+					local wnd = Apollo.LoadForm(self.xmlDoc, "ExcludedSkillListItem", wndExc, self)
+					local chkExclude = wnd:FindChild("ChkExclude")
+					chkExclude:SetCheck(sv)
+					wnd:SetText(sk)
+					chkExclude:SetData(sk)
 					end
 				end
 			end
-			
-			wnd:SetText(v.strName)
-			chkExclude:SetData(v)
-			end
-		end
 		
 	wndExc:ArrangeChildrenVert()
 end
